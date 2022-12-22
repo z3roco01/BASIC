@@ -3,6 +3,7 @@
 #include <stdint.h>
 #include <string.h>
 
+#define MAX_BASIC_TOKS 65536
 #define MAX_STR_LEN    200
 #define MAX_NUM_DIGITS 10
 #define SYMS_LEN       2
@@ -29,7 +30,7 @@ typedef struct tok {
 void printTok(tok_t tok) {
 	switch(tok.type) {
 		case NUM:
-			printf("NUM: %i\n", *((int32_t*)tok.data));
+			printf("NUM: %i\n", *(int32_t*)tok.data);
 			break;
 		case STR:
 			printf("STR: %s\n", (char*)tok.data);
@@ -46,14 +47,11 @@ void printTok(tok_t tok) {
 	}
 }
 
-uint32_t tokenize(char* code, tok_t** toks) {
+uint32_t tokenize(char* code, tok_t* toks) {
 	uint32_t tokCount = 0;
-	*toks = malloc(100 * sizeof(tok_t));
 	for(uint32_t i = 0; i < strlen(code); ++i) {
-		if(code[i] == ' ' || code[i] == '\t' || code[i] == '\n') {
+		if(code[i] == ' ' || code[i] == '\t' || code[i] == '\n' || code[i] == '\0') {
 
-		}else if(code[i] == '\0') {
-			break;
 		}else if(code[i] == '"') {
 			// Parsing a string
 
@@ -65,8 +63,8 @@ uint32_t tokenize(char* code, tok_t** toks) {
 				j++;
 			}
 
-			(*toks)[tokCount].type   = STR;
-			(*toks)[tokCount++].data = str;
+			toks[tokCount].type   = STR;
+			toks[tokCount++].data = str;
 
 			i = j;
 		}else if(code[i] <= '9' && code[i] >= '0') {
@@ -79,13 +77,11 @@ uint32_t tokenize(char* code, tok_t** toks) {
 				j++;
 			}
 
+			int32_t* num = malloc(sizeof(int32_t));
+			*num = atoi(numS);
 
-			int32_t num = atoi(numS);
-			void* as = &num;
-
-			(*toks)[tokCount].type   = NUM;
-			(*toks)[tokCount++].data = &num;
-			printf("%s %i\n", numS, *((int32_t*)(*toks)[tokCount-1].data));
+			toks[tokCount].type   = NUM;
+			toks[tokCount++].data = num;
 
 			i = j;
 		}else {
@@ -111,15 +107,15 @@ uint32_t tokenize(char* code, tok_t** toks) {
 				return 0;
 			}
 
-			(*toks)[tokCount].type   = SYM;
+			toks[tokCount].type   = SYM;
 			symbols_t symNum = k;
-			(*toks)[tokCount++].data = &symNum;
+			toks[tokCount++].data = &symNum;
 
 			i = j;
 		}
 	}
 
-	(*toks)[tokCount++].type = END;
+	toks[tokCount++].type = END;
 	return tokCount;
 }
 
@@ -127,7 +123,8 @@ int main(void){
 	char* code = "10 PRINT \"HELLO WORLD!\"\0";
 
 	tok_t* toks;
-	uint32_t tokCount = tokenize(code, &toks);
+	toks = malloc(100 * sizeof(tok_t));
+	uint32_t tokCount = tokenize(code, toks);
 	for(uint32_t i = 0; i < tokCount; ++i) {
 		printTok(toks[i]);
 	}
