@@ -119,14 +119,62 @@ uint32_t tokenize(char* code, tok_t* toks) {
 	return tokCount;
 }
 
+uint8_t basicPrint(tok_t arg) {
+	if(arg.type == STR)
+		printf("%s\n", (char*)arg.data);
+	else if(arg.type == NUM)
+		printf("%i\n", *(int32_t*)arg.data);
+	else
+		return 1;
+	return 0;
+}
+
+// returns 0 on success anything else is failure
+uint8_t interpret(tok_t* toks, uint32_t tokCount) {
+	for(uint32_t i = 0; i < tokCount; ++i) {
+		switch(toks[i].type) {
+			case NUM:
+				break;
+			case STR:
+				break;
+			case SYM:
+				switch(*(int32_t*)toks[i].data) {
+					case PRINT:
+						if(basicPrint(toks[i+1])) {
+							printf("INVALID ARGUMENT TYPE OF %i FOR %s\n", toks[i].type, SYMBOLS[PRINT]);
+						}
+						i++;
+						break;
+					case GOTO:
+						break;
+					default:
+						printf("UNKONW SYMBOL WITH NUMBER: %i", *(int32_t*)toks[i].data);
+						break;
+				}
+				break;
+			case END:
+				return 0;
+				break;
+			default:
+				printf("UNKOWN TOKEN: %i", toks[i].type);
+				return 1;
+				break;
+		}
+	}
+
+	return 0;
+}
+
 int main(void){
 	char* code = "10 PRINT \"HELLO WORLD!\"\0";
 
 	tok_t* toks;
-	toks = malloc(100 * sizeof(tok_t));
-	uint32_t tokCount = tokenize(code, toks);
-	for(uint32_t i = 0; i < tokCount; ++i) {
-		printTok(toks[i]);
+	toks = malloc(MAX_BASIC_TOKS * sizeof(tok_t));
+	char* line = calloc(1, MAX_STR_LEN+1);
+	while(1){
+		fgets(line, MAX_STR_LEN, stdin);
+		uint32_t tokCount = tokenize(line, toks);
+		uint8_t result = interpret(toks, tokCount);
 	}
 
 	return 0;
