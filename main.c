@@ -43,6 +43,12 @@ typedef struct line {
 	uint32_t tokCnt;
 } line_t;
 
+typedef enum varType {
+    VAR_NUM,
+	VAR_STR,
+	VAR_VOID,
+} varType_t;
+
 void printTok(tok_t tok) {
 	switch(tok.type) {
 		case NUM:
@@ -164,6 +170,7 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 	uint8_t  gotLineNum = 0;
 	uint32_t lineInd    = 0;
 	uint32_t curLineNum = 0;
+	uint32_t lineCnt    = 0;
 	for(uint32_t i = 0; i < codeLen; ++i) {
 		if(!gotLineNum) {
 			char* numS = calloc(MAX_NUM_DIGITS+1, 1);
@@ -174,13 +181,14 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 			curLineNum = atoi(numS);
 			free(numS);
 
-			printf("%i\n", curLineNum);
-
 			lines[lineInd].num      = curLineNum;
 			lines[lineInd].tokCnt   = 0;
 			lines[lineInd].firstTok = NULL;
 			lines[lineInd].lastTok  = NULL;
 			gotLineNum = 1;
+
+			lineCnt++;
+
 			i = j;
 		}else {
 			if(code[i] == ' ' || code[i] == '\t' || code[i] == '\0') {
@@ -285,6 +293,8 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 			}
 		}
 	}
+
+	return lineCnt;
 }
 
 uint8_t basicPrint(tok_t arg) {
@@ -333,6 +343,47 @@ uint8_t basicPrint(tok_t arg) {
 	return 0;
 }*/
 
+uint8_t newInterpret(line_t* lines, uint32_t lineCnt) {
+	tok_t* curTok;
+	for(uint32_t i = 0; i < lineCnt; ++i) {
+		printf("%u\n", lines[i].num);
+		curTok = lines[i].firstTok;
+		for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
+			switch(curTok->type) {
+				case NUM:
+					break;
+				case STR:
+					printf("STR\n");
+					break;
+				case SYM:
+					switch(*(symbols_t*)curTok->data) {
+						case PRINT:
+							/*if(basicPrint(*curTok->nextTok)) {
+								printf("INVALID ARGUMENT TYPE OF %i FOR %s\n", curTok->nextTok->type, SYMBOLS[PRINT].name);
+							}*/
+							printf("%s\n", (char*)curTok->nextTok->data);
+							j++;
+							break;
+						case GOTO:
+							break;
+						default:
+							printf("UNKONW SYMBOL WITH NUMBER: %u\n", *(int32_t*)curTok->data);
+							break;
+					}
+					break;
+				case END:
+					return 0;
+					break;
+				default:
+					break;
+			}
+			curTok = curTok->nextTok;
+		}
+	}
+
+	return 0;
+}
+
 int main(void){
 	char* code = "10 PRINT \"HELLO WORLD!\"\n20 PRINT \"BALLS\"\0";
 
@@ -340,11 +391,9 @@ int main(void){
 
 	uint32_t lineCnt = newTokenize(lines, code, strlen(code));
 
-	tok_t* nextTok = lines[0].firstTok;
-	while(nextTok != NULL) {
-		printTok(*nextTok);
-		nextTok = nextTok->nextTok;
-	}
+	printf("%u\n", lines[1].firstTok->type);
+
+	return newInterpret(lines, lineCnt);
 	/*tok_t* toks;
 	toks = malloc(MAX_BASIC_TOKS * sizeof(tok_t));
 	uint32_t tokCount = tokenize(code, toks);
