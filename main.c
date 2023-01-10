@@ -6,7 +6,7 @@
 #define MAX_BASIC_TOKS        65536
 #define MAX_BASIC_TOKS_P_LINE 100
 #define MAX_BASIC_LINES       65536
-#define MAX_STR_LEN           200
+#define MAX_STR_LEN           255
 #define MAX_NUM_DIGITS        10
 #define SYMS_LEN              2
 #define MAX_SYM_LEN           6
@@ -28,6 +28,8 @@ typedef enum tokType {
 	STR,
     SYM,
 	END,
+	VAR,
+	ASG,
 } tokType_t;
 
 typedef struct tok {
@@ -48,6 +50,11 @@ typedef enum varType {
 	VAR_STR,
 	VAR_VOID,
 } varType_t;
+
+typedef struct var {
+	varType_t type;
+	void* data;
+} var_t;
 
 void printTok(tok_t tok) {
 	switch(tok.type) {
@@ -167,7 +174,7 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 
 				i = j;
 			}else {
-				// Symbol
+				// Symbol or var
 				char* symbol = calloc(1, MAX_SYM_LEN);
 				uint32_t j = i;
 				while(code[j] != ' ' && code[j] != '(' && code[j] != '\0' && j-i < MAX_SYM_LEN-1) {
@@ -183,17 +190,25 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 						break;
 					}
 				}
-				if(match == 0) {
-					printf("UNKNOWN SYMBOL: %s\n", symbol);
-					return 0;
-				}
-
 				tok_t* tok = malloc(sizeof(tok_t));
-				tok->type = SYM;
-				symbols_t symNum = *k;
-				tok->data = k;
-				tok->nextTok = NULL;
+				if(match == 0) {
+					if(code[i] >= 'A' && code[i] <= 'Z') {
+						// Var
+						tok->type    = VAR;
+						char letter  = code[i];
+						tok->data    = &letter;
+						tok->nextTok = NULL;
+						free(k);
+					}
+				}else {
+					tok->type = SYM;
+					tok->data = k;
+					tok->nextTok = NULL;
 
+
+
+					i = j;
+				}
 				free(symbol);
 
 				if(lines[lineInd].firstTok == NULL) {
@@ -203,9 +218,8 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 					lines[lineInd].lastTok->nextTok = tok;
 					lines[lineInd].lastTok = tok;
 				}
-				lines[lineInd].tokCnt++;
 
-				i = j;
+				lines[lineInd].tokCnt++;
 			}
 		}
 	}
@@ -224,9 +238,10 @@ uint8_t basicPrint(tok_t arg) {
 }
 
 uint8_t interpret(line_t* lines, uint32_t lineCnt) {
+	var_t* vars = malloc(sizeof(var_t)*26);
+
 	tok_t* curTok;
 	for(uint32_t i = 0; i < lineCnt; ++i) {
-		printf("%u\n", lines[i].num);
 		curTok = lines[i].firstTok;
 		//for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
 		while(curTok != NULL) {
@@ -234,7 +249,6 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 				case NUM:
 					break;
 				case STR:
-					printf("STR\n");
 					break;
 				case SYM:
 					switch(*(symbols_t*)curTok->data) {
@@ -269,7 +283,8 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "10 PRINT \"HELLO WORLD!\"\n20 PRINT \"BALLS\"\n\0";
+	char* code = "10 A = 5\n20 PRINT A\n\0";
+	//char* code = "10 PRINT \"HELLO, WORLD!\"\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
 
