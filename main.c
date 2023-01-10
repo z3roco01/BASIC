@@ -188,13 +188,26 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 			gotLineNum = 1;
 
 			lineCnt++;
-
 			i = j;
 		}else {
-			if(code[i] == ' ' || code[i] == '\t' || code[i] == '\0') {
+			if(code[i] == ' ' || code[i] == '\t') {
 				// Whitespace
-			}else if(code[i] == '\n') {
+			}else if(code[i] == '\n' || code[i] == '\0') {
 				// End of line
+
+				tok_t* tok = malloc(sizeof(tok_t));
+				tok->type    = END;
+				tok->data    = NULL;
+				tok->nextTok = NULL;
+
+				if(lines[lineInd].firstTok == NULL) {
+					lines[lineInd].firstTok = tok;
+					lines[lineInd].lastTok  = tok;
+				}else {
+					lines[lineInd].lastTok->nextTok = tok;
+					lines[lineInd].lastTok = tok;
+				}
+
 				lineInd++;
 				gotLineNum = 0;
 			}else if(code[i] == '"') {
@@ -207,7 +220,7 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 					j++;
 				}
 
-				tok_t* tok = malloc(sizeof(tok));
+				tok_t* tok = malloc(sizeof(tok_t));
 				tok->type    = STR;
 				tok->data    = str;
 				tok->nextTok = NULL;
@@ -259,10 +272,10 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 					j++;
 				}
 
-				uint32_t k;
+				uint32_t* k = malloc(sizeof(uint32_t));
 				uint8_t match = 0;
-				for(k = 0; k < SYMS_LEN; ++k) {
-					if(strcmp(symbol, SYMBOLS[k].name) == 0) {
+				for((*k) = 0; *k < SYMS_LEN; ++(*k)) {
+					if(strcmp(symbol, SYMBOLS[*k].name) == 0) {
 						match = 1;
 						break;
 					}
@@ -274,8 +287,8 @@ uint32_t newTokenize(line_t* lines, char* code, uint32_t codeLen) {
 
 				tok_t* tok = malloc(sizeof(tok_t));
 				tok->type = SYM;
-				symbols_t symNum = k;
-				tok->data = &symNum;
+				symbols_t symNum = *k;
+				tok->data = k;
 				tok->nextTok = NULL;
 
 				free(symbol);
@@ -348,7 +361,8 @@ uint8_t newInterpret(line_t* lines, uint32_t lineCnt) {
 	for(uint32_t i = 0; i < lineCnt; ++i) {
 		printf("%u\n", lines[i].num);
 		curTok = lines[i].firstTok;
-		for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
+		//for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
+		while(curTok != NULL) {
 			switch(curTok->type) {
 				case NUM:
 					break;
@@ -358,23 +372,26 @@ uint8_t newInterpret(line_t* lines, uint32_t lineCnt) {
 				case SYM:
 					switch(*(symbols_t*)curTok->data) {
 						case PRINT:
-							/*if(basicPrint(*curTok->nextTok)) {
+							if(basicPrint(*curTok->nextTok)) {
 								printf("INVALID ARGUMENT TYPE OF %i FOR %s\n", curTok->nextTok->type, SYMBOLS[PRINT].name);
-							}*/
-							printf("%s\n", (char*)curTok->nextTok->data);
-							j++;
+								return 1;
+							}
+							//j++;
 							break;
 						case GOTO:
 							break;
 						default:
 							printf("UNKONW SYMBOL WITH NUMBER: %u\n", *(int32_t*)curTok->data);
+							return 1;
 							break;
 					}
 					break;
 				case END:
-					return 0;
+					curTok->nextTok = NULL;
 					break;
 				default:
+					printf("UNKNONW TOKEN WITH TYPE %u\n", curTok->type);
+					return 1;
 					break;
 			}
 			curTok = curTok->nextTok;
@@ -385,13 +402,11 @@ uint8_t newInterpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "10 PRINT \"HELLO WORLD!\"\n20 PRINT \"BALLS\"\0";
+	char* code = "10 PRINT \"HELLO WORLD!\"\n20 PRINT \"BALLS\"\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
 
 	uint32_t lineCnt = newTokenize(lines, code, strlen(code));
-
-	printf("%u\n", lines[1].firstTok->type);
 
 	return newInterpret(lines, lineCnt);
 	/*tok_t* toks;
