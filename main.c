@@ -29,13 +29,14 @@ typedef enum tokType {
     SYM,
 	END,
 	VAR,
-	ASG,
+	OP,
 } tokType_t;
 
 typedef struct tok {
-	tokType_t type;
-	void*     data;
+	tokType_t   type;
+	void*       data;
 	struct tok* nextTok;
+	struct tok* prevTok;
 } tok_t;
 
 typedef struct line {
@@ -44,6 +45,14 @@ typedef struct line {
 	tok_t* lastTok;
 	uint32_t tokCnt;
 } line_t;
+
+typedef enum opType {
+    ASG,
+	ADD,
+	SUB,
+	MUL,
+	DIV,
+} opType_t;
 
 typedef enum varType {
     VAR_NUM,
@@ -56,22 +65,47 @@ typedef struct var {
 	void* data;
 } var_t;
 
-void printTok(tok_t tok) {
-	switch(tok.type) {
+void printTok(tok_t* tok) {
+	switch(tok->type) {
 		case NUM:
-			printf("NUM: %i\n", *(int32_t*)tok.data);
+			printf("NUM: %i\n", *(int32_t*)tok->data);
 			break;
 		case STR:
-			printf("STR: %s\n", (char*)tok.data);
+			printf("STR: %s\n", (char*)tok->data);
 			break;
 		case SYM:
-			printf("SYM: %s\n", SYMBOLS[*(symbols_t*)tok.data].name);
+			printf("SYM: %s\n", SYMBOLS[*(symbols_t*)tok->data].name);
 			break;
 		case END:
 			printf("END\n");
 			break;
+		case VAR:
+			printf("VAR: %hu\n", *(uint8_t*)tok->data);
+			break;
+		case OP:
+			printf("OP: ");
+			switch(*(uint8_t*)tok->data) {
+				case ASG:
+					printf("ASG\n");
+					break;
+				case ADD:
+					printf("ADD\n");
+					break;
+				case SUB:
+					printf("SUB\n");
+					break;
+				case MUL:
+					printf("MUL\n");
+					break;
+				case DIV:
+					printf("DIV\n");
+					break;
+				default:
+					printf("%hu\n", *(uint8_t*)tok->data);
+					break;
+			}
 		default:
-			printf("UNKNOWN TOKEN TYPE: %i\n", tok.type);
+			printf("UNKNOWN TOKEN TYPE: %i\n", tok->type);
 			break;
 	}
 }
@@ -111,9 +145,11 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 				tok->nextTok = NULL;
 
 				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
 					lines[lineInd].firstTok = tok;
 					lines[lineInd].lastTok  = tok;
 				}else {
+					tok->prevTok = lines[lineInd].lastTok;
 					lines[lineInd].lastTok->nextTok = tok;
 					lines[lineInd].lastTok = tok;
 				}
@@ -136,9 +172,11 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 				tok->nextTok = NULL;
 
 				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
 					lines[lineInd].firstTok = tok;
 					lines[lineInd].lastTok  = tok;
 				}else {
+					tok->prevTok = lines[lineInd].lastTok;
 					lines[lineInd].lastTok->nextTok = tok;
 					lines[lineInd].lastTok = tok;
 				}
@@ -164,9 +202,11 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 				tok->nextTok = NULL;
 
 				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
 					lines[lineInd].firstTok = tok;
 					lines[lineInd].lastTok  = tok;
 				}else {
+					tok->prevTok = lines[lineInd].lastTok;
 					lines[lineInd].lastTok->nextTok = tok;
 					lines[lineInd].lastTok = tok;
 				}
@@ -174,7 +214,7 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 
 				i = j;
 			}else {
-				// Symbol or var
+				// Symbol, var or op
 				char* symbol = calloc(1, MAX_SYM_LEN);
 				uint32_t j = i;
 				while(code[j] != ' ' && code[j] != '(' && code[j] != '\0' && j-i < MAX_SYM_LEN-1) {
@@ -194,27 +234,35 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 				if(match == 0) {
 					if(code[i] >= 'A' && code[i] <= 'Z') {
 						// Var
-						tok->type    = VAR;
-						char letter  = code[i];
-						tok->data    = &letter;
-						tok->nextTok = NULL;
+						tok->type       = VAR;
+						uint8_t* letter = malloc(sizeof(uint8_t));
+						*letter         = code[i] - 0x41;
+						tok->data       = letter;
+						tok->nextTok    = NULL;
 						free(k);
+					}else if(code[i] == '=') {
+						// Asignment
+						tok->type    = OP;
+						uint8_t* op  = malloc(sizeof(uint8_t));
+						*op          = ASG;
+						tok->data    = op;
+						tok->nextTok = NULL;
 					}
 				}else {
 					tok->type = SYM;
 					tok->data = k;
 					tok->nextTok = NULL;
 
-
-
 					i = j;
 				}
 				free(symbol);
 
 				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
 					lines[lineInd].firstTok = tok;
 					lines[lineInd].lastTok  = tok;
 				}else {
+					tok->prevTok = lines[lineInd].lastTok;
 					lines[lineInd].lastTok->nextTok = tok;
 					lines[lineInd].lastTok = tok;
 				}
@@ -227,18 +275,39 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	return lineCnt;
 }
 
-uint8_t basicPrint(tok_t arg) {
-	if(arg.type == STR)
+uint8_t basicPrint(var_t* vars, tok_t* arg) {
+	if(arg->type == STR) {
 		printf("%s\n", (char*)arg.data);
-	else if(arg.type == NUM)
+	}else if(arg->type == NUM) {
 		printf("%i\n", *(int32_t*)arg.data);
-	else
+	}else if(arg->type == VAR) {
+		uint8_t varInd = *(uint8_t*)arg->data;
+		switch(vars[varInd].type) {
+			case VAR_NUM:
+				printf("%i\n", *(int32_t*)vars[varInd].data);
+				break;
+			case VAR_STR:
+				printf("%s\n", (char*)vars[varInd].data);
+				break;
+			case VAR_VOID:
+				break;
+			default:
+				return 1;
+				break;
+		}
+	}else {
 		return 1;
+	}
 	return 0;
 }
 
 uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 	var_t* vars = malloc(sizeof(var_t)*26);
+	// Initialize the varriables
+	for(uint8_t i = 0; i < 26; ++i) {
+		vars[i].type = VAR_VOID;
+		vars[i].data = 0;
+	}
 
 	tok_t* curTok;
 	for(uint32_t i = 0; i < lineCnt; ++i) {
@@ -253,16 +322,17 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 				case SYM:
 					switch(*(symbols_t*)curTok->data) {
 						case PRINT:
-							if(basicPrint(*curTok->nextTok)) {
-								printf("INVALID ARGUMENT TYPE OF %i FOR %s\n", curTok->nextTok->type, SYMBOLS[PRINT].name);
+							if(basicPrint(vars, curTok->nextTok)) {
+								printf("INVALID ARGUMENT FOR %s ON LINE %u\n", SYMBOLS[PRINT].name, lines[i].num);
 								return 1;
 							}
 							//j++;
 							break;
 						case GOTO:
+							if(basicGoto(vars, curTok->nextTok))
 							break;
 						default:
-							printf("UNKONW SYMBOL WITH NUMBER: %u\n", *(int32_t*)curTok->data);
+							printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(int32_t*)curTok->data, lines[i].num);
 							return 1;
 							break;
 					}
@@ -270,8 +340,32 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 				case END:
 					curTok->nextTok = NULL;
 					break;
+				case VAR:
+					break;
+				case OP:
+					tok_t* prevTok = curTok->prevTok;
+					tok_t* nextTok = curTok->nextTok;
+
+					switch(*(uint8_t*)curTok->data) {
+						case ASG:
+							if(prevTok->type != VAR) {
+								printf("CANNOT ASSIGN NON VARRIABLE ON LINE %u", i);
+								return 0;
+							}
+
+							uint8_t varsInd = *(uint8_t*)prevTok->data;
+							if(nextTok->type == NUM) {
+								vars[varsInd].type = VAR_NUM;
+								vars[varsInd].data = nextTok->data;
+							}
+							break;
+						default:
+							printf("UNKOWN OPERATION WITH NUMBER: %u ON LINE \n", curTok->type, lines[i].num);
+							break;
+					}
+					break;
 				default:
-					printf("UNKNONW TOKEN WITH TYPE %u\n", curTok->type);
+					printf("UNKNONW TOKEN WITH TYPE %u ON LINE\n", curTok->type, lines[i].num);
 					return 1;
 					break;
 			}
@@ -283,7 +377,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "10 A = 5\n20 PRINT A\n\0";
+	char* code = "10 B = 5\n20 PRINT B\n\0";
 	//char* code = "10 PRINT \"HELLO, WORLD!\"\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
