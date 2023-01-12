@@ -232,6 +232,7 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 				}
 				tok_t* tok = malloc(sizeof(tok_t));
 				if(match == 0) {
+
 					if(code[i] >= 'A' && code[i] <= 'Z') {
 						// Var
 						tok->type       = VAR;
@@ -277,9 +278,9 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 
 uint8_t basicPrint(var_t* vars, tok_t* arg) {
 	if(arg->type == STR) {
-		printf("%s\n", (char*)arg.data);
+		printf("%s\n", (char*)arg->data);
 	}else if(arg->type == NUM) {
-		printf("%i\n", *(int32_t*)arg.data);
+		printf("%i\n", *(int32_t*)arg->data);
 	}else if(arg->type == VAR) {
 		uint8_t varInd = *(uint8_t*)arg->data;
 		switch(vars[varInd].type) {
@@ -301,19 +302,38 @@ uint8_t basicPrint(var_t* vars, tok_t* arg) {
 	return 0;
 }
 
+uint8_t basicGoto(var_t* vars, tok_t* arg, line_t* lines, uint32_t lineCnt, uint8_t* failed) {
+	if(arg->type != NUM) {
+		*failed = 1;
+		return 0;
+	}
+
+	uint32_t lineNum = *(uint32_t*)arg->data;
+
+	for(uint32_t i = 0; i < lineCnt; ++i) {
+		if(lines[i].num == lineNum)
+			return i;
+	}
+
+	*failed = 1;
+	return 0;
+}
+
 uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 	var_t* vars = malloc(sizeof(var_t)*26);
-	// Initialize the varriables
+	// Initialize all the varriables
 	for(uint8_t i = 0; i < 26; ++i) {
 		vars[i].type = VAR_VOID;
 		vars[i].data = 0;
 	}
 
 	tok_t* curTok;
+	tok_t* nextTok;
 	for(uint32_t i = 0; i < lineCnt; ++i) {
 		curTok = lines[i].firstTok;
 		//for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
 		while(curTok != NULL) {
+			nextTok = curTok->nextTok;
 			switch(curTok->type) {
 				case NUM:
 					break;
@@ -329,7 +349,14 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 							//j++;
 							break;
 						case GOTO:
-							if(basicGoto(vars, curTok->nextTok))
+							uint8_t* fail = 0;
+							uint32_t newLineInd = basicGoto(vars, curTok->nextTok, lines, lineCnt, fail);
+							if(*fail) {
+								printf("INALID ARGUMENT FOR %s ON LINE %u\n", SYMBOLS[GOTO].name, lines[i].num);
+								return 1;
+							}
+							i = newLineInd - 1;
+							nextTok = NULL;
 							break;
 						default:
 							printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(int32_t*)curTok->data, lines[i].num);
@@ -338,7 +365,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 					}
 					break;
 				case END:
-					curTok->nextTok = NULL;
+					nextTok = NULL;
 					break;
 				case VAR:
 					break;
@@ -377,7 +404,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "10 B = 5\n20 PRINT B\n\0";
+	char* code = "10 PRINT \"POO\"\n25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
 	//char* code = "10 PRINT \"HELLO, WORLD!\"\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
