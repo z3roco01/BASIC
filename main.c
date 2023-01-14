@@ -8,7 +8,7 @@
 #define MAX_BASIC_LINES       65536
 #define MAX_STR_LEN           255
 #define MAX_NUM_DIGITS        10
-#define SYMS_LEN              2
+#define SYMS_LEN              3
 #define MAX_SYM_LEN           6
 
 typedef struct sym {
@@ -16,11 +16,12 @@ typedef struct sym {
 	uint32_t argCount;
 } sym_t;
 
-static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}};
+static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}};
 
 typedef enum symbols {
     PRINT,
     GOTO,
+	NEXT
 } symbols_t;
 
 typedef enum tokType {
@@ -302,20 +303,46 @@ uint8_t basicPrint(var_t* vars, tok_t* arg) {
 	return 0;
 }
 
-uint8_t basicGoto(var_t* vars, tok_t* arg, line_t* lines, uint32_t lineCnt, uint8_t* failed) {
-	if(arg->type != NUM) {
-		*failed = 1;
-		return 0;
+uint8_t basicGoto(var_t* vars, tok_t* arg, line_t* lines, uint32_t lineCnt, uint32_t* lineNum) {
+	if(arg->type == NUM) {
+		uint32_t newLineNum = *(uint32_t*)arg->data;
+
+		for(uint32_t i = 0; i < lineCnt; ++i) {
+			if(lines[i].num == newLineNum) {
+				*lineNum = i;
+				return 0;
+			}
+		}
+	}else if(arg->type == 4) {
+		// Non working
+		uint8_t varNum = *(uint8_t*)arg->data;
+
+		if(vars[varNum].type != NUM)
+			return 1;
+
+		uint32_t newLineNum = *(int32_t*)vars[varNum].data;
+		for(uint32_t i = 0; i < lineCnt; ++i) {
+			if(lines[i].num == newLineNum) {
+				*lineNum = i;
+				return 0;
+			}
+		}
+	}else {
+		return 1;
 	}
+}
 
-	uint32_t lineNum = *(uint32_t*)arg->data;
+uint8_t basicNext(var_t* vars, tok_t* arg) {
+	if(arg->type != VAR)
+		return 1;
 
-	for(uint32_t i = 0; i < lineCnt; ++i) {
-		if(lines[i].num == lineNum)
-			return i;
-	}
+	uint8_t varNum = *(char*)arg->data;
 
-	*failed = 1;
+	if(vars[varNum].type != VAR_NUM)
+		return 1;
+
+	(*(int32_t*)vars[varNum].data)++;
+
 	return 0;
 }
 
@@ -329,6 +356,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 
 	tok_t* curTok;
 	tok_t* nextTok;
+	uint32_t a = 0;
 	for(uint32_t i = 0; i < lineCnt; ++i) {
 		curTok = lines[i].firstTok;
 		//for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
@@ -349,14 +377,19 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 							//j++;
 							break;
 						case GOTO:
-							uint8_t* fail = 0;
-							uint32_t newLineInd = basicGoto(vars, curTok->nextTok, lines, lineCnt, fail);
-							if(*fail) {
+							uint32_t newLineInd = 0;
+							if(basicGoto(vars, curTok->nextTok, lines, lineCnt, &newLineInd)) {
 								printf("INALID ARGUMENT FOR %s ON LINE %u\n", SYMBOLS[GOTO].name, lines[i].num);
 								return 1;
 							}
 							i = newLineInd - 1;
 							nextTok = NULL;
+							break;
+						case NEXT:
+							if(basicNext(vars, curTok->nextTok)) {
+								printf("INALID ARGUMENT FOR %s ON LINE %u\n", SYMBOLS[NEXT].name, lines[i].num);
+								return 1;
+							}
 							break;
 						default:
 							printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(int32_t*)curTok->data, lines[i].num);
@@ -396,7 +429,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 					return 1;
 					break;
 			}
-			curTok = curTok->nextTok;
+			curTok = nextTok;
 		}
 	}
 
@@ -404,8 +437,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "10 PRINT \"POO\"\n25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
-	//char* code = "10 PRINT \"HELLO, WORLD!\"\n\0";
+	char* code = "25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
 
