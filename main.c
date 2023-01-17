@@ -8,7 +8,7 @@
 #define MAX_BASIC_LINES       65536
 #define MAX_STR_LEN           255
 #define MAX_NUM_DIGITS        10
-#define SYMS_LEN              3
+#define SYMS_LEN              5
 #define MAX_SYM_LEN           6
 
 typedef struct sym {
@@ -16,12 +16,14 @@ typedef struct sym {
 	uint32_t argCount;
 } sym_t;
 
-static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}};
+static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}, {"FOR\0", 2}, {"TO\0", 1}};
 
 typedef enum symbols {
     PRINT,
     GOTO,
-	NEXT
+	NEXT,
+	FOR,
+	TO,
 } symbols_t;
 
 typedef enum tokType {
@@ -66,6 +68,21 @@ typedef struct var {
 	void* data;
 } var_t;
 
+typedef enum loopChck {
+    EQ,
+	LT,
+	GT,
+	LTE,
+	GTE,
+	ALWAYS,
+} loopChck_t;
+
+typedef struct loopCond {
+	loopChck_t chck;
+	int32_t    num;
+	uint8_t    varNum;
+} loopCond_t;
+
 void printTok(tok_t* tok) {
 	switch(tok->type) {
 		case NUM:
@@ -81,7 +98,7 @@ void printTok(tok_t* tok) {
 			printf("END\n");
 			break;
 		case VAR:
-			printf("VAR: %hu\n", *(uint8_t*)tok->data);
+			printf("VAR: %c\n", (*(char*)tok->data) + 0x41);
 			break;
 		case OP:
 			printf("OP: ");
@@ -105,6 +122,7 @@ void printTok(tok_t* tok) {
 					printf("%hu\n", *(uint8_t*)tok->data);
 					break;
 			}
+			break;
 		default:
 			printf("UNKNOWN TOKEN TYPE: %i\n", tok->type);
 			break;
@@ -346,6 +364,19 @@ uint8_t basicNext(var_t* vars, tok_t* arg) {
 	return 0;
 }
 
+uint8_t execCond(loopCond_t* cond, var_t* vars) {
+	switch(cond->chck) {
+		case EQ:
+			if(vars[cond->varNum].type == NUM && (*(int32_t*)vars[cond->varNum].data) == cond->num+1) {
+				return 0;
+			}
+			break;
+		default:
+			break;
+	}
+	return 1;
+}
+
 uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 	var_t* vars = malloc(sizeof(var_t)*26);
 	// Initialize all the varriables
@@ -354,9 +385,12 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 		vars[i].data = 0;
 	}
 
-	tok_t* curTok;
-	tok_t* nextTok;
-	uint32_t a = 0;
+	tok_t*      curTok;
+	tok_t*      nextTok;
+	uint32_t    loopStart = 0;
+	uint32_t    loopEnd   = 0;
+	uint32_t    looping   = 0;
+	loopCond_t* cond      = malloc(sizeof(loopCond_t));
 	for(uint32_t i = 0; i < lineCnt; ++i) {
 		curTok = lines[i].firstTok;
 		//for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
@@ -391,14 +425,48 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 								return 1;
 							}
 							break;
+						case FOR:
+							loopStart = i+1;
+							uint8_t found = 0;
+							for(uint32_t j = i+2; j < lineCnt; ++j) {
+								if(lines[j].firstTok->type == NEXT) {
+									loopEnd = j;
+									found   = 1;
+									break;
+								}
+							}
+							if(!found) {
+								printf("NO NEXT TO END THE FOR ON LINE %u\n", lines[i].num);
+								return 1;
+							}
+
+							if(curTok->nextTok->type != VAR) {
+								printf("VARRIABLE ASSIGNMENT NEEDED AFTER FOR ON LINE %u\n", lines[i].num);
+								return 1;
+							}
+							cond->varNum = *(uint8_t*)curTok->nextTok->data;
+
+							looping = 1;
+							break;
+						case TO:
+							cond->chck = EQ;
+							if(curTok->nextTok->type != NUM) {
+								printf("NUMBER NEEDED AFTER TO ON LINE %u\n", lines[i].num);
+								return 1;
+							}
+							cond->num  = *(int32_t*)curTok->nextTok->data;
+							break;
 						default:
-							printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(int32_t*)curTok->data, lines[i].num);
+							printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(uint32_t*)curTok->data, lines[i].num);
 							return 1;
 							break;
 					}
 					break;
 				case END:
 					nextTok = NULL;
+					if(looping && i == loopEnd && execCond(cond, vars)) {
+						i = loopStart - 1;
+					}
 					break;
 				case VAR:
 					break;
@@ -437,11 +505,18 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 }
 
 int main(void){
-	char* code = "25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
+	//char* code = "25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
+	char* code = "10 FOR I=0 TO 5 \n20 PRINT I\n30 NEXT I\n\0";
 
 	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
 
 	uint32_t lineCnt = tokenize(lines, code, strlen(code));
+
+	/*tok_t* curTok = lines[0].firstTok;
+	while(curTok != NULL) {
+		printTok(curTok);
+		curTok = curTok->nextTok;
+	}*/
 
 	return interpret(lines, lineCnt);
 }
