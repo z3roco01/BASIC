@@ -141,7 +141,9 @@ void printTok(tok_t* tok) {
 	}
 }
 
-// Tokenizing
+/**************/
+/* Tokenizing */
+/**************/
 
 uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	uint8_t  gotLineNum = 0;
@@ -309,7 +311,9 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	return lineCnt;
 }
 
-// Interpreting
+/****************/
+/* Interpreting */
+/****************/
 
 uint8_t basicPrint(var_t* vars, tok_t* arg) {
 	if(arg->type == STR) {
@@ -520,7 +524,9 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 	return 0;
 }
 
-// String lines
+/*****************/
+/* Getting input */
+/*****************/
 
 uint32_t getLineNum(char* line) {
 	uint32_t i;
@@ -636,10 +642,10 @@ int main(void){
 			printf("READY.\n");
 		}else if(strncmp(line, "RUN\n\0", 4) == 0) {
 			printf("run\n");
+		}else {
+			curLine = mkStrLine(line);
+			addStrLine(lines, curLine);
 		}
-
-		curLine = mkStrLine(line);
-		addStrLine(lines, curLine);
 
 		/*curL = lines->head;
 		while(curL != NULL) {
