@@ -83,6 +83,18 @@ typedef struct loopCond {
 	uint8_t    varNum;
 } loopCond_t;
 
+typedef struct strLine {
+	struct strLine* prev;
+	struct strLine* next;
+	char* line;
+	uint32_t num;
+} strLine_t;
+
+typedef struct strLines {
+	strLine_t* head;
+	strLine_t* tail;
+} strLines_t;
+
 void printTok(tok_t* tok) {
 	switch(tok->type) {
 		case NUM:
@@ -128,6 +140,8 @@ void printTok(tok_t* tok) {
 			break;
 	}
 }
+
+// Tokenizing
 
 uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	uint8_t  gotLineNum = 0;
@@ -294,6 +308,8 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 
 	return lineCnt;
 }
+
+// Interpreting
 
 uint8_t basicPrint(var_t* vars, tok_t* arg) {
 	if(arg->type == STR) {
@@ -504,13 +520,143 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 	return 0;
 }
 
+// String lines
+
+uint32_t getLineNum(char* line) {
+	uint32_t i;
+	uint32_t num = 0;
+
+	for(i = 0; line[i] >= '0' && line[i] <= '9' && i <= MAX_NUM_DIGITS; ++i)
+		num = num * 10 + (line[i] - '0');
+
+	return num;
+}
+
+strLine_t* mkStrLine(char* line) {
+	strLine_t* strLine = malloc(sizeof(strLine_t));
+
+	strLine->prev = NULL;
+	strLine->next = NULL;
+	strLine->line = line;
+	strLine->num  = getLineNum(line);
+
+	return strLine;
+}
+
+void addStrLine(strLines_t* lines, strLine_t* new) {
+	if(new == NULL)
+		return;
+	if(lines->head == NULL) {
+		lines->head = new;
+		lines->tail = new;
+		return;
+	}
+
+	if(lines->head == lines->tail) {
+		if(lines->head->num < new->num) {
+			lines->head->next = new;
+			new->prev         = lines->head;
+
+			lines->tail = new;
+		}else if(lines->head->num > new->num) {
+			lines->head->prev = new;
+			new->next         = lines->head;
+
+			lines->head = new;
+		}
+
+		return;
+	}
+
+	if(lines->head->num == new->num) {
+		lines->head->line = new->line;
+		return;
+	}else if(lines->tail->num == new->num) {
+		printf("x\n");
+		lines->tail->line = new->line;
+		return;
+	}
+
+	if(lines->tail->num < new->num) {
+		lines->tail->next = new;
+		new->prev         = lines->tail;
+
+		lines->tail = new;
+		return;
+	}
+
+	// curLine will be bigger ->prev will be <
+	strLine_t* curLine = lines->head;
+	strLine_t* prev;
+	strLine_t* next;
+	while(curLine != NULL && curLine->num <= new->num) {
+		if(curLine->num == new->num) {
+			prev = curLine->prev;
+			next = curLine->next;
+
+			prev->next = new;
+			new->prev = prev;
+
+			next->prev = new;
+			new->next = next;
+			return;
+		}
+		if(curLine->next == NULL)
+			break;
+		curLine = curLine->next;
+	}
+	prev = curLine->prev;
+
+	prev->next = new;
+	new->prev = prev;
+
+	curLine->prev = new;
+	new->next = curLine;
+}
+
 int main(void){
+	char* line = calloc(1, MAX_STR_LEN);
+
+	strLines_t* lines = malloc(sizeof(strLines_t));
+	lines->head = NULL;
+	lines->tail = NULL;
+	strLine_t* curLine = NULL;
+
+	printf("READY.\n");
+	while(1) {
+		fgets(line, MAX_STR_LEN, stdin);
+
+		if(strncmp(line, "LIST\n\0", 5) == 0) {
+			printf("\n");
+			strLine_t* curL = lines->head;
+			while(curL != NULL) {
+				printf("%s", curL->line);
+				curL = curL->next;
+			}
+			printf("READY.\n");
+		}else if(strncmp(line, "RUN\n\0", 4) == 0) {
+			printf("run\n");
+		}
+
+		curLine = mkStrLine(line);
+		addStrLine(lines, curLine);
+
+		/*curL = lines->head;
+		while(curL != NULL) {
+			printf("    %s\n", curL->line);
+			curL = curL->next;
+		}*/
+
+		line = calloc(1, MAX_STR_LEN);
+	}
+
+	return 0;
 	//char* code = "25 PRINT \"HELLO, WORLD!\"\n30 GOTO 25\n\0";
-	char* code = "10 FOR I=0 TO 5 \n20 PRINT I\n30 NEXT I\n\0";
+	//char* code = "10 FOR I=0 TO 5 \n20 PRINT I\n30 NEXT I\n\0";
 
-	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
+	//line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
 
-	uint32_t lineCnt = tokenize(lines, code, strlen(code));
+	//uint32_t lineCnt = tokenize(lines, code, strlen(code));
 
 	/*tok_t* curTok = lines[0].firstTok;
 	while(curTok != NULL) {
@@ -518,5 +664,5 @@ int main(void){
 		curTok = curTok->nextTok;
 	}*/
 
-	return interpret(lines, lineCnt);
+	//return interpret(lines, lineCnt);
 }
