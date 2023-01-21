@@ -145,7 +145,159 @@ void printTok(tok_t* tok) {
 /* Tokenizing */
 /**************/
 
-uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
+uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
+	uint32_t   lineInd    = 0;
+	uint32_t   curLineNum = 0;
+	uint32_t   lineCnt    = 0;
+	strLine_t* curLine    = strLines->head;
+	char*      curStr     = NULL;
+	while(curLine != NULL) {
+		curLineNum = curLine->num;
+		curStr     = curLine->line;
+		for(uint32_t i = 0; curStr[i] != '\0'; ++i) {
+			if(curStr[i] == ' ' || curStr[i] == '\t') {
+				// Whitespace
+			}else if(curStr[i] == '\n') {
+				// End of line
+
+				tok_t* tok = malloc(sizeof(tok_t));
+				tok->type    = END;
+				tok->data    = NULL;
+				tok->nextTok = NULL;
+
+				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
+					lines[lineInd].firstTok = tok;
+					lines[lineInd].lastTok  = tok;
+				}else {
+					tok->prevTok = lines[lineInd].lastTok;
+					lines[lineInd].lastTok->nextTok = tok;
+					lines[lineInd].lastTok = tok;
+				}
+
+			}else if(curStr[i] == '"') {
+				// String
+				char* str = calloc(1, MAX_STR_LEN+1);
+				i++;
+				uint32_t j = i;
+				while(curStr[j] != '"' && j-i < MAX_STR_LEN) {
+					str[j-i] = curStr[j];
+					j++;
+				}
+
+				tok_t* tok = malloc(sizeof(tok_t));
+				tok->type    = STR;
+				tok->data    = str;
+				tok->nextTok = NULL;
+
+				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
+					lines[lineInd].firstTok = tok;
+					lines[lineInd].lastTok  = tok;
+				}else {
+					tok->prevTok = lines[lineInd].lastTok;
+					lines[lineInd].lastTok->nextTok = tok;
+					lines[lineInd].lastTok = tok;
+				}
+				lines[lineInd].tokCnt++;
+
+				i = j;
+			}else if(curStr[i] >= '0' && curStr[i] <= '9') {
+				// Number
+				char* numS = calloc(1, MAX_NUM_DIGITS+1);
+				uint32_t j = i;
+				while(curStr[j] >= '0' && curStr[j] <= '9' && j-i < MAX_NUM_DIGITS) {
+					numS[j-i] = curStr[j];
+					j++;
+				}
+
+				int32_t* num = calloc(1, sizeof(int32_t));
+				*num = atoi(numS);
+				free(numS);
+
+				tok_t* tok = malloc(sizeof(tok_t));
+				tok->type    = NUM;
+				tok->data    = num;
+				tok->nextTok = NULL;
+
+				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
+					lines[lineInd].firstTok = tok;
+					lines[lineInd].lastTok  = tok;
+				}else {
+					tok->prevTok = lines[lineInd].lastTok;
+					lines[lineInd].lastTok->nextTok = tok;
+					lines[lineInd].lastTok = tok;
+				}
+				lines[lineInd].tokCnt++;
+
+				i = j;
+			}else {
+				// Symbol, var or op
+				char* symbol = calloc(1, MAX_SYM_LEN);
+				uint32_t j = i;
+				while(curStr[j] != ' ' && curStr[j] != '(' && curStr[j] != '\0' && j-i < MAX_SYM_LEN-1) {
+					symbol[j-i] = curStr[j];
+					j++;
+				}
+
+				uint32_t* k = malloc(sizeof(uint32_t));
+				uint8_t match = 0;
+				for((*k) = 0; *k < SYMS_LEN; ++(*k)) {
+					if(strcmp(symbol, SYMBOLS[*k].name) == 0) {
+						match = 1;
+						break;
+					}
+				}
+				tok_t* tok = malloc(sizeof(tok_t));
+				if(match == 0) {
+
+					if(curStr[i] >= 'A' && curStr[i] <= 'Z') {
+						// Var
+						tok->type       = VAR;
+						uint8_t* letter = malloc(sizeof(uint8_t));
+						*letter         = curStr[i] - 0x41;
+						tok->data       = letter;
+						tok->nextTok    = NULL;
+						free(k);
+					}else if(curStr[i] == '=') {
+						// Asignment
+						tok->type    = OP;
+						uint8_t* op  = malloc(sizeof(uint8_t));
+						*op          = ASG;
+						tok->data    = op;
+						tok->nextTok = NULL;
+					}
+				}else {
+					tok->type = SYM;
+					tok->data = k;
+					tok->nextTok = NULL;
+
+					i = j;
+				}
+				free(symbol);
+
+				if(lines[lineInd].firstTok == NULL) {
+					tok->prevTok = NULL;
+					lines[lineInd].firstTok = tok;
+					lines[lineInd].lastTok  = tok;
+				}else {
+					tok->prevTok = lines[lineInd].lastTok;
+					lines[lineInd].lastTok->nextTok = tok;
+					lines[lineInd].lastTok = tok;
+				}
+
+				lines[lineInd].tokCnt++;
+			}
+		}
+		lineInd++;
+		lineCnt++;
+		curLine = curLine->next;
+	}
+	return lineCnt;
+}
+
+/*uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	uint8_t  gotLineNum = 0;
 	uint32_t lineInd    = 0;
 	uint32_t curLineNum = 0;
@@ -309,7 +461,7 @@ uint32_t tokenize(line_t* lines, char* code, uint32_t codeLen) {
 	}
 
 	return lineCnt;
-}
+}*/
 
 /****************/
 /* Interpreting */
@@ -622,11 +774,12 @@ void addStrLine(strLines_t* lines, strLine_t* new) {
 
 int main(void){
 	char* line = calloc(1, MAX_STR_LEN);
-
-	strLines_t* lines = malloc(sizeof(strLines_t));
-	lines->head = NULL;
-	lines->tail = NULL;
+	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
+	strLines_t* strLines = malloc(sizeof(strLines_t));
+	strLines->head = NULL;
+	strLines->tail = NULL;
 	strLine_t* curLine = NULL;
+	uint32_t lineCnt = 0;
 
 	printf("READY.\n");
 	while(1) {
@@ -634,17 +787,29 @@ int main(void){
 
 		if(strncmp(line, "LIST\n\0", 5) == 0) {
 			printf("\n");
-			strLine_t* curL = lines->head;
+			strLine_t* curL = strLines->head;
 			while(curL != NULL) {
 				printf("%s", curL->line);
 				curL = curL->next;
 			}
 			printf("READY.\n");
 		}else if(strncmp(line, "RUN\n\0", 4) == 0) {
-			printf("run\n");
+			lineCnt = lineTokenize(lines, strLines);
+			interpret(lines, lineCnt);
+		}else if(strncmp(line, "LISTD\n\0", 6) == 0){
+			lineCnt = lineTokenize(lines, strLines);
+
+			tok_t* curTok = NULL;
+			for(uint32_t i = 0; i < lineCnt; ++i) {
+				curTok = lines[i].firstTok;
+				while(curTok != NULL) {
+					printTok(curTok);
+					curTok = curTok->nextTok;
+				}
+			}
 		}else {
 			curLine = mkStrLine(line);
-			addStrLine(lines, curLine);
+			addStrLine(strLines, curLine);
 		}
 
 		/*curL = lines->head;
