@@ -1,4 +1,5 @@
 #include "interpreter.h"
+#include "types.h"
 
 uint8_t basicPrint(var_t* vars, tok_t* arg) {
     if(arg->type == STR) {
@@ -133,8 +134,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                             loopStart = i+1;
                             uint8_t found = 0;
                             for(uint32_t j = i+1; j < lineCnt; ++j) {
-                                printTok(lines[j].firstTok->nextTok);
-                                if(*(uint32_t*)lines[j].firstTok->nextTok->data == NEXT) {
+                                if(lines[j].firstTok->nextTok->type == SYM && (*(uint32_t*)lines[j].firstTok->nextTok->data) == NEXT) {
                                     loopEnd = j;
                                     found   = 1;
                                     break;
