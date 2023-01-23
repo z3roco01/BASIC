@@ -6,6 +6,7 @@
 #include <stdint.h>
 
 #include "./types.h"
+#include "./tokenizer.h"
 
 uint8_t interpret(line_t* lines, uint32_t lineCnt);
 

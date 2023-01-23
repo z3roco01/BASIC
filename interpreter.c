@@ -50,9 +50,8 @@ uint8_t basicGoto(var_t* vars, tok_t* arg, line_t* lines, uint32_t lineCnt, uint
                 return 0;
             }
         }
-    }else {
-        return 1;
     }
+    return 1;
 }
 
 uint8_t basicNext(var_t* vars, tok_t* arg) {
@@ -133,13 +132,15 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                         case FOR:
                             loopStart = i+1;
                             uint8_t found = 0;
-                            for(uint32_t j = i+2; j < lineCnt; ++j) {
-                                if(lines[j].firstTok->type == NEXT) {
+                            for(uint32_t j = i+1; j < lineCnt; ++j) {
+                                printTok(lines[j].firstTok->nextTok);
+                                if(*(uint32_t*)lines[j].firstTok->nextTok->data == NEXT) {
                                     loopEnd = j;
                                     found   = 1;
                                     break;
                                 }
                             }
+
                             if(!found) {
                                 printf("NO NEXT TO END THE FOR ON LINE %u\n", lines[i].num);
                                 return 1;
