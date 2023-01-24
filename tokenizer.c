@@ -69,6 +69,10 @@ void addTok(line_t* lines, uint32_t lineInd, tok_t* tok) {
     lines[lineInd].tokCnt++;
 }
 
+uint8_t isChrNum(char c) {
+    return (c >= '0' && c <= '9');
+}
+
 uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
     uint32_t   lineInd    = 0;
     uint32_t   curLineNum = 0;
@@ -94,11 +98,11 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 addTok(lines, lineInd, tok);
 
                 i = j;
-            }else if(curStr[i] >= '0' && curStr[i] <= '9') {
+            }else if(isChrNum(curStr[i])) {
                 // Number
                 char* numS = calloc(1, MAX_NUM_DIGITS+1);
                 uint32_t j = i;
-                while(curStr[j] >= '0' && curStr[j] <= '9' && j-i < MAX_NUM_DIGITS) {
+                while(isChrNum(curStr[j]) && j-i < MAX_NUM_DIGITS) {
                     numS[j-i] = curStr[j];
                     j++;
                 }
