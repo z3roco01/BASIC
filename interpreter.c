@@ -1,6 +1,19 @@
 #include "interpreter.h"
 #include "types.h"
 
+// Round and abs
+uint32_t rabs(float f) {
+    // round up or down?
+    uint8_t add = (f - (int32_t)f < 0.5 ? 0 : 1);
+
+    int32_t i = ((int32_t)f) + add;
+
+    if(i >= 0)
+        return (uint32_t)i;
+    else
+        return (uint32_t)i * -1;
+}
+
 uint8_t basicPrint(var_t* vars, tok_t* arg) {
     if(arg->type == STR) {
         printf("%s\n", (char*)arg->data);
@@ -190,36 +203,49 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                             if(nextTok->nextTok->type == OP) {
                                 // operation that needs to be execed
                                 tok_t* opTok = nextTok->nextTok;
+
+                                tok_t* leftTok  = opTok->prevTok;
+                                tok_t* rightTok = opTok->nextTok;
+
+                                uint32_t leftNum  = 0;
+                                uint32_t rightNum = 0;
+
+                                if(leftTok->type == NUM) {
+                                    leftNum = *(uint32_t*)leftTok->data;
+                                }else if(leftTok->type == VAR) {
+                                    uint8_t lvar = *(uint8_t*)leftTok->data;
+                                    if(vars[lvar].type != VAR_NUM) {
+                                        printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
+                                    }
+                                    leftNum = *(uint32_t*)vars[lvar].data;
+                                }
+
+                                if(rightTok->type == NUM) {
+                                    rightNum = *(uint32_t*)rightTok->data;
+                                }else if(rightTok->type == VAR) {
+                                    uint8_t lvar = *(uint8_t*)rightTok->data;
+                                    if(vars[lvar].type != VAR_NUM) {
+                                        printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
+                                    }
+                                    rightNum = *(uint32_t*)vars[lvar].data;
+                                }
+                                uint32_t res  = 0;
+                                vars[varsInd].type = VAR_NUM;
                                 switch (*(uint8_t*)opTok->data) {
                                     case ADD:
-                                        tok_t* leftTok  = opTok->prevTok;
-                                        tok_t* rightTok = opTok->nextTok;
-
-                                        uint32_t leftNum  = 0;
-                                        uint32_t rightNum = 0;
-
-                                        if(leftTok->type == NUM) {
-                                            leftNum = *(uint32_t*)leftTok->data;
-                                        }else if(leftTok->type == VAR) {
-                                            uint8_t lvar = *(uint8_t*)leftTok->data;
-                                            if(vars[lvar].type != VAR_NUM) {
-                                                printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
-                                            }
-                                            leftNum = *(uint32_t*)vars[lvar].data;
-                                        }
-
-                                        if(rightTok->type == NUM) {
-                                            rightNum = *(uint32_t*)rightTok->data;
-                                        }else if(rightTok->type == VAR) {
-                                            uint8_t lvar = *(uint8_t*)rightTok->data;
-                                            if(vars[lvar].type != VAR_NUM) {
-                                                printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
-                                            }
-                                            rightNum = *(uint32_t*)vars[lvar].data;
-                                        }
-
-                                        vars[varsInd].type = VAR_NUM;
-                                        uint32_t res = leftNum + rightNum;
+                                        res = leftNum + rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    case SUB:
+                                        res = leftNum - rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    case MUL:
+                                        res = rabs(leftNum * rightNum);
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    case DIV:
+                                        res = rabs(leftNum / rightNum);
                                         vars[varsInd].data = &res;
                                         break;
                                     default:
@@ -238,6 +264,12 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 
                             break;
                         case ADD:
+                            break;
+                        case SUB:
+                            break;
+                        case MUL:
+                            break;
+                        case DIV:
                             break;
                         default:
                             printf("UNKOWN OPERATION WITH NUMBER: %u ON LINE \n", curTok->type, lines[i].num);
