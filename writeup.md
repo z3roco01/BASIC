@@ -4,7 +4,7 @@
 ### Goals
 - Make a basic interpreter that can be ported to my OS [BubblesOS](https://github.com/z3roco01/BubblesOS)
 - Basic bult-ins such as PRINT GOTO FOR
-- Support for 26 letter variables
+- Support for 26 variables referenced by letters
 - Basic math and bitwise operations
 - Basic branching (if ... else)
 
