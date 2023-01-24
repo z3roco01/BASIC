@@ -98,7 +98,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
     loopCond_t* cond      = malloc(sizeof(loopCond_t));
     for(uint32_t i = 0; i < lineCnt; ++i) {
         curTok = lines[i].firstTok;
-        //for(uint32_t j = 0; j < lines[i].tokCnt; ++j) {
+
         while(curTok != NULL) {
             nextTok = curTok->nextTok;
             switch(curTok->type) {
@@ -182,16 +182,62 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
 
                     switch(*(uint8_t*)curTok->data) {
                         case ASG:
-                            if(prevTok->type != VAR) {
-                                printf("CANNOT ASSIGN NON VARRIABLE ON LINE %u", i);
+                            if(prevTok->type != VAR && (nextTok->type != NUM || nextTok->type != VAR)) {
+                                printf("CANNOT ASSIGN NON VARIABLE TO NON VARIABLE/NUMBER ON LINE %u", i);
                                 return 0;
                             }
-
                             uint8_t varsInd = *(uint8_t*)prevTok->data;
-                            if(nextTok->type == NUM) {
-                                vars[varsInd].type = VAR_NUM;
-                                vars[varsInd].data = nextTok->data;
+                            if(nextTok->nextTok->type == OP) {
+                                // operation that needs to be execed
+                                tok_t* opTok = nextTok->nextTok;
+                                switch (*(uint8_t*)opTok->data) {
+                                    case ADD:
+                                        tok_t* leftTok  = opTok->prevTok;
+                                        tok_t* rightTok = opTok->nextTok;
+
+                                        uint32_t leftNum  = 0;
+                                        uint32_t rightNum = 0;
+
+                                        if(leftTok->type == NUM) {
+                                            leftNum = *(uint32_t*)leftTok->data;
+                                        }else if(leftTok->type == VAR) {
+                                            uint8_t lvar = *(uint8_t*)leftTok->data;
+                                            if(vars[lvar].type != VAR_NUM) {
+                                                printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
+                                            }
+                                            leftNum = *(uint32_t*)vars[lvar].data;
+                                        }
+
+                                        if(rightTok->type == NUM) {
+                                            rightNum = *(uint32_t*)rightTok->data;
+                                        }else if(rightTok->type == VAR) {
+                                            uint8_t lvar = *(uint8_t*)rightTok->data;
+                                            if(vars[lvar].type != VAR_NUM) {
+                                                printf("VARIABLE IS NOT OF TYPE NUMBER FOR ADD ON LINE %u\n", lines[i].num);
+                                            }
+                                            rightNum = *(uint32_t*)vars[lvar].data;
+                                        }
+
+                                        vars[varsInd].type = VAR_NUM;
+                                        uint32_t res = leftNum + rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    default:
+                                        break;
+                                }
+                            }else {
+                                if(nextTok->type == NUM) {
+                                    vars[varsInd].type = VAR_NUM;
+                                    vars[varsInd].data = nextTok->data;
+                                }else if(nextTok->type == VAR) {
+                                    uint8_t nextVarInd = *(uint8_t*)nextTok->data;
+                                    vars[varsInd].type = vars[nextVarInd].type;
+                                    vars[varsInd].data = vars[nextVarInd].data;
+                                }
                             }
+
+                            break;
+                        case ADD:
                             break;
                         default:
                             printf("UNKOWN OPERATION WITH NUMBER: %u ON LINE \n", curTok->type, lines[i].num);

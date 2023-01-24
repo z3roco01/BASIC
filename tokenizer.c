@@ -134,6 +134,7 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 lines[lineInd].tokCnt++;
 
                 i = j;
+                i--;
             }else {
                 // Symbol, var or op
                 char* symbol = calloc(1, MAX_SYM_LEN);
@@ -153,7 +154,6 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 }
                 tok_t* tok = malloc(sizeof(tok_t));
                 if(match == 0) {
-
                     if(curStr[i] >= 'A' && curStr[i] <= 'Z') {
                         // Var
                         tok->type       = VAR;
@@ -161,7 +161,6 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                         *letter         = curStr[i] - 0x41;
                         tok->data       = letter;
                         tok->nextTok    = NULL;
-                        free(k);
                     }else if(curStr[i] == '=') {
                         // Asignment
                         tok->type    = OP;
@@ -169,7 +168,15 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                         *op          = ASG;
                         tok->data    = op;
                         tok->nextTok = NULL;
+                    }else if(curStr[i] == '+') {
+                        tok->type    = OP;
+                        uint8_t* op  = malloc(sizeof(uint8_t));
+                        *op          = ADD;
+                        tok->data    = op;
+                        tok->nextTok = NULL;
+                    }else {
                     }
+                    free(k);
                 }else {
                     tok->type = SYM;
                     tok->data = k;
