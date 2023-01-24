@@ -192,6 +192,30 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                         *op          = SUB;
                         tok->data    = op;
                         tok->nextTok = NULL;
+                    }else if(curStr[i] == '!') {
+                        tok->type    = OP;
+                        uint8_t* op  = malloc(sizeof(uint8_t));
+                        *op          = NOT;
+                        tok->data    = op;
+                        tok->nextTok = NULL;
+                    }else if(curStr[i] == '&') {
+                        tok->type    = OP;
+                        uint8_t* op  = malloc(sizeof(uint8_t));
+                        *op          = AND;
+                        tok->data    = op;
+                        tok->nextTok = NULL;
+                    }else if(curStr[i] == '|') {
+                        tok->type    = OP;
+                        uint8_t* op  = malloc(sizeof(uint8_t));
+                        *op          = OR;
+                        tok->data    = op;
+                        tok->nextTok = NULL;
+                    }else if(curStr[i] == '^') {
+                        tok->type    = OP;
+                        uint8_t* op  = malloc(sizeof(uint8_t));
+                        *op          = XOR;
+                        tok->data    = op;
+                        tok->nextTok = NULL;
                     }
 
                     free(k);

@@ -248,6 +248,18 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                                         res = rabs(leftNum / rightNum);
                                         vars[varsInd].data = &res;
                                         break;
+                                    case AND:
+                                        res = leftNum & rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    case OR:
+                                        res = leftNum | rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
+                                    case XOR:
+                                        res = leftNum ^ rightNum;
+                                        vars[varsInd].data = &res;
+                                        break;
                                     default:
                                         break;
                                 }
@@ -270,6 +282,14 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                         case MUL:
                             break;
                         case DIV:
+                            break;
+                        case NOT:
+                            break;
+                        case AND:
+                            break;
+                        case OR:
+                            break;
+                        case XOR:
                             break;
                         default:
                             printf("UNKOWN OPERATION WITH NUMBER: %u ON LINE \n", curTok->type, lines[i].num);
