@@ -3,5 +3,5 @@ Learning how to make a BASIC interpreter so I can implement one in my OS Bubbles
 
 ## Todo
 - [X] Varriables
-- [ ] Math
+- [X] Math
 - [ ] Built-ins
