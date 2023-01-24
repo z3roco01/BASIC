@@ -32,6 +32,21 @@ int main(void){
 		}else if(strncmp(line, "RUN\n\0", 4) == 0) {
 			lineCnt = lineTokenize(lines, strLines);
 			interpret(lines, lineCnt);
+
+			tok_t* curTok  = NULL;
+			tok_t* nextTok = NULL;
+			for(uint32_t i = 0; i < lineCnt; ++i) {
+				curTok = lines[i].firstTok;
+				while(curTok != NULL) {
+					nextTok = curTok->nextTok;
+					free(curTok);
+					curTok = nextTok;
+				}
+				lines[i].firstTok = NULL;
+				lines[i].lastTok  = NULL;
+				lines[i].num      = 0;
+				lines[i].tokCnt   = 0;
+			}
 		}else if(strncmp(line, "LISTD\n\0", 6) == 0){
 			lineCnt = lineTokenize(lines, strLines);
 
