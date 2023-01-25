@@ -55,6 +55,10 @@ typedef enum opType {
     SUB,
     MUL,
     DIV,
+    NOT,
+    AND,
+    OR,
+    XOR,
 } opType_t;
 
 typedef enum varType {
