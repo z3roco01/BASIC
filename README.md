@@ -41,6 +41,7 @@ output
 
 ### IF Statements
 In an if statment you can have a simple check then limited code after it.
+Possible checks are greater than(`>`), lesser than(`<`), greater than or equal(`>=`), lesser than or equal(`<=`) and equal `==`
 
 ``` purebasic
 10 A=5
