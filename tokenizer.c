@@ -41,6 +41,9 @@ void printTok(tok_t* tok) {
                     break;
             }
             break;
+        case COND:
+            printf("COND\n");
+            break;
         default:
             printf("UNKNOWN TOKEN TYPE: %i\n", tok->type);
             break;
@@ -139,6 +142,7 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 void*     data = NULL;
                 if(match == 0) {
                     data = malloc(sizeof(uint8_t));
+                    *(uint8_t*)data = 0;
                     if(curStr[i] >= 'A' && curStr[i] <= 'Z') {
                         // Var
                         type            = VAR;
@@ -171,6 +175,27 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                     }else if(curStr[i] == '^') {
                         type            = OP;
                         *(uint8_t*)data = XOR;
+                    }else if(curStr[i] == '=' && curStr[i+1] == '=') {
+                        // matches on ==
+                        type            = COND;
+                        *(uint8_t*)data = EQ;
+                        ++i;
+                    }else if(curStr[i] == '>' && curStr[i+1] == '=') {
+                        // matches on >=
+                        type            = COND;
+                        *(uint8_t*)data = GTE;
+                        ++i;
+                    }else if(curStr[i] == '<' && curStr[i+1] == '=') {
+                        // matches on <=
+                        type            = COND;
+                        *(uint8_t*)data = LTE;
+                        ++i;
+                    }else if(curStr[i] == '>') {
+                        type            = COND;
+                        *(uint8_t*)data = GT;
+                    }else if(curStr[i] == '<') {
+                        type            = COND;
+                        *(uint8_t*)data = LT;
                     }
                     free(k);
                 }else {

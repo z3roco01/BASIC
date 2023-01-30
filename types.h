@@ -8,7 +8,7 @@
 #define MAX_BASIC_LINES       65536
 #define MAX_STR_LEN           255
 #define MAX_NUM_DIGITS        10
-#define SYMS_LEN              5
+#define SYMS_LEN              7
 #define MAX_SYM_LEN           6
 
 typedef struct sym {
@@ -16,7 +16,7 @@ typedef struct sym {
     uint32_t argCount;
 } sym_t;
 
-static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}, {"FOR\0", 2}, {"TO\0", 1}};
+static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}, {"FOR\0", 2}, {"TO\0", 1}, {"IF\0", 4}, {"THEN\0", 1}};
 
 typedef enum symbols {
     PRINT,
@@ -24,6 +24,8 @@ typedef enum symbols {
     NEXT,
     FOR,
     TO,
+    IF,
+    THEN,
 } symbols_t;
 
 typedef enum tokType {
@@ -33,6 +35,7 @@ typedef enum tokType {
     END,
     VAR,
     OP,
+    COND,
 } tokType_t;
 
 typedef struct tok {
@@ -72,20 +75,33 @@ typedef struct var {
     void* data;
 } var_t;
 
-typedef enum loopChck {
+typedef enum chck {
     EQ,
     LT,
     GT,
     LTE,
     GTE,
     ALWAYS,
-} loopChck_t;
+} chck_t;
 
-typedef struct loopCond {
-    loopChck_t chck;
-    int32_t    num;
-    uint8_t    varNum;
-} loopCond_t;
+#define CONFIG_VAR 1
+#define CONFIG_NUM 0
+
+typedef enum condConfig {
+    C_NUM_NUM,
+    C_NUM_VAR,
+    C_VAR_NUM,
+    C_VAR_VAR,
+} condConfig_t;
+
+typedef struct cond {
+    chck_t   chck;
+    uint8_t  config;
+    uint32_t num1;
+    uint32_t num2;
+    uint8_t  varNum1;
+    uint8_t  varNum2;
+} cond_t;
 
 typedef struct strLine {
     struct strLine* prev;

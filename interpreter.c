@@ -1,13 +1,15 @@
 #include "interpreter.h"
 #include "types.h"
+#include <stdio.h>
 
-// Round and abs
+// Round and absolute
 uint32_t rabs(float f) {
     // round up or down?
     uint8_t add = (f - (int32_t)f < 0.5 ? 0 : 1);
 
     int32_t i = ((int32_t)f) + add;
 
+    // get absolute value
     if(i >= 0)
         return (uint32_t)i;
     else
@@ -82,14 +84,44 @@ uint8_t basicNext(var_t* vars, tok_t* arg) {
     return 0;
 }
 
-uint8_t execCond(loopCond_t* cond, var_t* vars) {
+uint32_t condGetLeft(cond_t* cond, var_t* vars) {
+    if(cond->config & 0b10)
+        return *(uint32_t*)vars[cond->varNum1].data;
+    else
+        return cond->num1;
+}
+
+uint32_t condGetRight(cond_t* cond, var_t* vars) {
+    if(cond->config & 0b01)
+        return *(uint32_t*)vars[cond->varNum2].data;
+    else
+        return cond->num2;
+}
+
+uint8_t execCond(cond_t* cond, var_t* vars) {
     switch(cond->chck) {
         case EQ:
-            if(vars[cond->varNum].type == NUM && (*(int32_t*)vars[cond->varNum].data) == cond->num+1) {
+            if(condGetLeft(cond, vars) == condGetRight(cond, vars))
                 return 0;
-            }
+            break;
+        case LT:
+            if(condGetLeft(cond, vars) < condGetRight(cond, vars))
+                return 0;
+            break;
+        case GT:
+            if(condGetLeft(cond, vars) > condGetRight(cond, vars))
+                return 0;
+            break;
+        case LTE:
+            if(condGetLeft(cond, vars) <= condGetRight(cond, vars))
+                return 0;
+            break;
+        case GTE:
+            if(condGetLeft(cond, vars) >= condGetRight(cond, vars))
+                return 0;
             break;
         default:
+            printf("UNKNOWN COND %u!\n", cond->chck);
             break;
     }
     return 1;
@@ -108,7 +140,7 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
     uint32_t    loopStart = 0;
     uint32_t    loopEnd   = 0;
     uint32_t    looping   = 0;
-    loopCond_t* cond      = malloc(sizeof(loopCond_t));
+    cond_t* cond      = malloc(sizeof(cond_t));
     for(uint32_t i = 0; i < lineCnt; ++i) {
         curTok = lines[i].firstTok;
 
@@ -146,8 +178,9 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                         case FOR:
                             loopStart = i+1;
                             uint8_t found = 0;
-                            for(uint32_t j = i+1; j < lineCnt; ++j) {
-                                if(lines[j].firstTok->nextTok->type == SYM && (*(uint32_t*)lines[j].firstTok->nextTok->data) == NEXT) {
+                            for(uint32_t j = i; j < lineCnt; ++j) {
+                                // Temp work around for tokenizing that makes extra num tokens at the start of lines
+                                if(lines[j].firstTok->nextTok->nextTok->type == SYM && (*(uint32_t*)lines[j].firstTok->nextTok->nextTok->data) == NEXT) {
                                     loopEnd = j;
                                     found   = 1;
                                     break;
@@ -163,7 +196,8 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                                 printf("VARRIABLE ASSIGNMENT NEEDED AFTER FOR ON LINE %u\n", lines[i].num);
                                 return 1;
                             }
-                            cond->varNum = *(uint8_t*)curTok->nextTok->data;
+                            cond->config = C_VAR_NUM;
+                            cond->varNum1 = *(uint8_t*)curTok->nextTok->data;
 
                             looping = 1;
                             break;
@@ -173,7 +207,43 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                                 printf("NUMBER NEEDED AFTER TO ON LINE %u\n", lines[i].num);
                                 return 1;
                             }
-                            cond->num  = *(int32_t*)curTok->nextTok->data;
+                            cond->num2 = *(uint32_t*)curTok->nextTok->data;
+                            break;
+                        case IF:
+                            tok_t* left = curTok->nextTok;
+                            tok_t* chck = left->nextTok;
+                            tok_t* right = chck->nextTok;
+                            if((left->type != VAR && left->type != NUM) || chck->type != COND || (right->type != VAR && right->type != NUM)) {
+                                printf("WRONG ARGUMENTS FOR IF STATEMENT ON LINE %u\n", lines[i].num);
+                                return 1;
+                            }
+
+                            cond_t* ifCond = malloc(sizeof(cond_t));
+                            ifCond->config = 0;
+                            ifCond->chck = *(uint8_t*)chck->data;
+                            // Parse the config (which are variables and arent) and set the right var/num
+                            if(left->type == VAR) {
+                                // set left bit to var type
+                                ifCond->config  = 0b10;
+                                ifCond->varNum1 = *(uint8_t*)left->data;
+                            }else {
+                                // clear left bit to num type
+                                ifCond->num1 = *(uint32_t*)left->data;
+                            }
+
+                            if(right->type == VAR) {
+                                // set right bit to var type
+                                ifCond->config |= 0b01;
+                                ifCond->varNum2 = *(uint8_t*)right->data;
+                            }else {
+                                // clear right bit to num type
+                                ifCond->num2 = *(uint32_t*)right->data;
+                            }
+                            if(execCond(ifCond, vars))
+                                nextTok = NULL;
+
+                            break;
+                        case THEN:
                             break;
                         default:
                             printf("UNKONW SYMBOL WITH NUMBER: %u ON LINE %u\n", *(uint32_t*)curTok->data, lines[i].num);
@@ -295,6 +365,8 @@ uint8_t interpret(line_t* lines, uint32_t lineCnt) {
                             printf("UNKOWN OPERATION WITH NUMBER: %u ON LINE \n", curTok->type, lines[i].num);
                             break;
                     }
+                    break;
+                case COND:
                     break;
                 default:
                     printf("UNKNONW TOKEN WITH TYPE %u ON LINE\n", curTok->type, lines[i].num);
