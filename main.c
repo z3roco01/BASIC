@@ -1,35 +1,31 @@
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-#include <string.h>
-
 #include "./symbols.h"
 #include "./tokenizer.h"
 #include "./interpreter.h"
 #include "./input.h"
+#include "interface.h"
 
 int main(void){
-	char* line = calloc(1, MAX_STR_LEN);
-	line_t* lines = malloc(MAX_BASIC_LINES * sizeof(line_t));
-	strLines_t* strLines = malloc(sizeof(strLines_t));
+	char* line = Calloc(1, MAX_STR_LEN);
+	line_t* lines = Malloc(MAX_BASIC_LINES * sizeof(line_t));
+	strLines_t* strLines = Malloc(sizeof(strLines_t));
 	strLines->head = NULL;
 	strLines->tail = NULL;
 	strLine_t* curLine = NULL;
 	uint32_t lineCnt = 0;
 
-	printf("READY.\n");
+	printString("READY.\n");
 	while(1) {
-		fgets(line, MAX_STR_LEN, stdin);
+		getLine(line);
 
-		if(strncmp(line, "LIST\n\0", 5) == 0) {
-			printf("\n");
+		if(stringCmp(line, "LIST\n\0", 5) == 0) {
+			printString("\n");
 			strLine_t* curL = strLines->head;
 			while(curL != NULL) {
-				printf("%s", curL->line);
+				printString(curL->line);
 				curL = curL->next;
 			}
-			printf("READY.\n");
-		}else if(strncmp(line, "RUN\n\0", 4) == 0) {
+			printString("READY.\n");
+		}else if(stringCmp(line, "RUN\n\0", 4) == 0) {
 			lineCnt = lineTokenize(lines, strLines);
 			interpret(lines, lineCnt);
 
@@ -47,7 +43,7 @@ int main(void){
 				lines[i].num      = 0;
 				lines[i].tokCnt   = 0;
 			}
-		}else if(strncmp(line, "LISTD\n\0", 6) == 0){
+		}else if(stringCmp(line, "LISTD\n\0", 6) == 0){
 			lineCnt = lineTokenize(lines, strLines);
 
 			tok_t* curTok = NULL;
@@ -63,13 +59,7 @@ int main(void){
 			addStrLine(strLines, curLine);
 		}
 
-		/*curL = lines->head;
-		while(curL != NULL) {
-			printf("    %s\n", curL->line);
-			curL = curL->next;
-		}*/
-
-		line = calloc(1, MAX_STR_LEN);
+		line = Calloc(1, MAX_STR_LEN);
 	}
 
 	return 0;

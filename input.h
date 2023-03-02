@@ -1,9 +1,7 @@
 #ifndef INPUT_H_
 #define INPUT_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-
+#include "./interface.h"
 #include "./types.h"
 
 strLine_t* mkStrLine(char* line);

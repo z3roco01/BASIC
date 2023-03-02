@@ -1,7 +1,14 @@
 #ifndef TYPES_H_
 #define TYPES_H_
 
+#ifdef __linux__
 #include <stdint.h>
+typedef uint32_t u32;
+typedef int32_t  s32;
+typedef uint8_t  u8;
+#elif __bubblesos__
+
+#endif
 
 #define MAX_BASIC_TOKS        65536
 #define MAX_BASIC_TOKS_P_LINE 100
@@ -13,7 +20,7 @@
 
 typedef struct sym {
     char* name;
-    uint32_t argCount;
+    u32 argCount;
 } sym_t;
 
 static const sym_t SYMBOLS[SYMS_LEN] = {{"PRINT\0", 1}, {"GOTO\0", 1}, {"NEXT\0", 1}, {"FOR\0", 2}, {"TO\0", 1}, {"IF\0", 4}, {"THEN\0", 1}};
@@ -46,10 +53,10 @@ typedef struct tok {
 } tok_t;
 
 typedef struct line {
-    uint32_t num;
+    u32 num;
     tok_t* firstTok;
     tok_t* lastTok;
-    uint32_t tokCnt;
+    u32 tokCnt;
 } line_t;
 
 typedef enum opType {
@@ -96,18 +103,18 @@ typedef enum condConfig {
 
 typedef struct cond {
     chck_t   chck;
-    uint8_t  config;
-    uint32_t num1;
-    uint32_t num2;
-    uint8_t  varNum1;
-    uint8_t  varNum2;
+    u8  config;
+    u32 num1;
+    u32 num2;
+    u8  varNum1;
+    u8  varNum2;
 } cond_t;
 
 typedef struct strLine {
     struct strLine* prev;
     struct strLine* next;
     char* line;
-    uint32_t num;
+    u32 num;
 } strLine_t;
 
 typedef struct strLines {

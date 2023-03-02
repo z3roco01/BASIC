@@ -1,13 +1,10 @@
 #ifndef INTERPRETER_H_
 #define INTERPRETER_H_
 
-#include <stdio.h>
-#include <stdlib.h>
-#include <stdint.h>
-
 #include "./types.h"
 #include "./tokenizer.h"
+#include "./interface.h"
 
-uint8_t interpret(line_t* lines, uint32_t lineCnt);
+u8 interpret(line_t* lines, uint32_t lineCnt);
 
 #endif // INTERPRETER_H_

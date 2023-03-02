@@ -1,57 +1,67 @@
 #include "tokenizer.h"
-#include "types.h"
+#include "interface.h"
 
 void printTok(tok_t* tok) {
     switch(tok->type) {
         case NUM:
-            printf("NUM: %i\n", *(int32_t*)tok->data);
+            printString("NUM: ");
+            printInt(*(int32_t*)tok->data);
+            printString("\n");
             break;
         case STR:
-            printf("STR: %s\n", (char*)tok->data);
+            printString("STR: ");
+            printString((char*)tok->data);
+            printString("\n");
             break;
         case SYM:
-            printf("SYM: %s\n", SYMBOLS[*(symbols_t*)tok->data].name);
+            printString("SYM: ");
+            printString(SYMBOLS[*(symbols_t*)tok->data].name);
+            printString("\n");
             break;
         case END:
-            printf("END\n");
+            printString("END\n");
             break;
         case VAR:
-            printf("VAR: %c\n", (*(char*)tok->data) + 0x41);
+            printString("VAR: ");
+            printChar((*(char*)tok->data) + 0x41);
+            printString("\n");
             break;
         case OP:
-            printf("OP: ");
+            printString("OP: ");
             switch(*(uint8_t*)tok->data) {
                 case ASG:
-                    printf("ASG\n");
+                    printString("ASG\n");
                     break;
                 case ADD:
-                    printf("ADD\n");
+                    printString("ADD\n");
                     break;
                 case SUB:
-                    printf("SUB\n");
+                    printString("SUB\n");
                     break;
                 case MUL:
-                    printf("MUL\n");
+                    printString("MUL\n");
                     break;
                 case DIV:
-                    printf("DIV\n");
+                    printString("DIV\n");
                     break;
                 default:
-                    printf("%hu\n", *(uint8_t*)tok->data);
+                    printByte(*(uint8_t*)tok->data);
                     break;
             }
             break;
         case COND:
-            printf("COND\n");
+            printString("COND\n");
             break;
         default:
-            printf("UNKNOWN TOKEN TYPE: %i\n", tok->type);
+            printString("UNKNOWN TOKEN TYPE: ");
+            printInt(tok->type);
+            printString("\n");
             break;
     }
 }
 
 tok_t* mkTok(tokType_t type, void* data) {
-    tok_t* tok = malloc(sizeof(tok_t));
+    tok_t* tok = Malloc(sizeof(tok_t));
     tok->type    = type;
     tok->data    = data;
     tok->nextTok = NULL;
@@ -89,7 +99,7 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
         for(uint32_t i = 0; curStr[i] != '\0'; ++i) {
             if(curStr[i] == '"') {
                 // String
-                char* str = calloc(1, MAX_STR_LEN+1);
+                char* str = Calloc(1, MAX_STR_LEN+1);
                 i++;
                 uint32_t j = i;
                 while(curStr[j] != '"' && j-i < MAX_STR_LEN) {
@@ -103,14 +113,14 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 i = j;
             }else if(isChrNum(curStr[i])) {
                 // Number
-                char* numS = calloc(1, MAX_NUM_DIGITS+1);
+                char* numS = Calloc(1, MAX_NUM_DIGITS+1);
                 uint32_t j = i;
                 while(isChrNum(curStr[j]) && j-i < MAX_NUM_DIGITS) {
                     numS[j-i] = curStr[j];
                     j++;
                 }
 
-                int32_t* num = calloc(1, sizeof(int32_t));
+                int32_t* num = Calloc(1, sizeof(int32_t));
                 *num = atoi(numS);
                 free(numS);
 
@@ -122,14 +132,14 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 i--;
             }else {
                 // Symbol, var or op
-                char* symbol = calloc(1, MAX_SYM_LEN);
+                char* symbol = Calloc(1, MAX_SYM_LEN);
                 uint32_t j = i;
                 while(curStr[j] != ' ' && curStr[j] != '(' && curStr[j] != '\0' && j-i < MAX_SYM_LEN-1) {
                     symbol[j-i] = curStr[j];
                     j++;
                 }
 
-                uint32_t* k = malloc(sizeof(uint32_t));
+                uint32_t* k = Malloc(sizeof(uint32_t));
                 uint8_t match = 0;
                 for((*k) = 0; *k < SYMS_LEN; ++(*k)) {
                     if(strcmp(symbol, SYMBOLS[*k].name) == 0) {
@@ -141,7 +151,7 @@ uint32_t lineTokenize(line_t* lines, strLines_t* strLines) {
                 tokType_t type = 0;
                 void*     data = NULL;
                 if(match == 0) {
-                    data = malloc(sizeof(uint8_t));
+                    data = Malloc(sizeof(uint8_t));
                     *(uint8_t*)data = 0;
                     if(curStr[i] >= 'A' && curStr[i] <= 'Z') {
                         // Var

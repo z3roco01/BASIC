@@ -11,7 +11,7 @@ uint32_t getLineNum(char* line) {
 }
 
 strLine_t* mkStrLine(char* line) {
-    strLine_t* strLine = malloc(sizeof(strLine_t));
+    strLine_t* strLine = Malloc(sizeof(strLine_t));
 
     strLine->prev = NULL;
     strLine->next = NULL;
