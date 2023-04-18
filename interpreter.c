@@ -14,7 +14,12 @@ u32 rabs(float f) {
         return (u32)i * -1;
 }
 
-u8 basicPrint(var_t* vars, tok_t* arg) {
+enum {
+    RESULT_SUCCESS = 0,
+    RESULT_ERROR_INVALID_TYPE,
+};
+
+int basicPrint(var_t* vars, tok_t* arg) {
     if(arg->type == STR) {
         printString((char*)arg->data);
         printString("\n");
@@ -27,21 +32,20 @@ u8 basicPrint(var_t* vars, tok_t* arg) {
             case VAR_NUM:
                 printInt(*(s32*)vars[varInd].data);
                 printString("\n");
-                break;
+                return RESULT_SUCCESS;
             case VAR_STR:
                 printString((char*)vars[varInd].data);
                 printString("\n");
-                break;
+                return RESULT_SUCCESS;
             case VAR_VOID:
-                break;
+                return RESULT_SUCCESS;
             default:
-                return 1;
-                break;
+                return RESULT_ERROR_INVALID_TYPE;
         }
     }else {
-        return 1;
+        return RESULT_ERROR_INVALID_TYPE;
     }
-    return 0;
+    return RESULT_SUCCESS;
 }
 
 u8 basicGoto(var_t* vars, tok_t* arg, line_t* lines, u32 lineCnt, u32* lineNum) {
